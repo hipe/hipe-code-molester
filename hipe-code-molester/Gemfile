@@ -1,0 +1,6 @@
+source :rubygems
+
+group :core do
+  gem 'ruby_parser', '>= 2.0.5'    # dev'd with this, earlier may work
+  gem 'sexp_processor', '>= 3.0.5' # ditto above
+end

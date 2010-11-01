@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+
+cm_root = File.expand_path('../../lib', __FILE__)
+$LOAD_PATH.unshift(cm_root) unless $LOAD_PATH.include?(cm_root)
+
+ts_root = File.expand_path('../../..', __FILE__)
+$LOAD_PATH.unshift(ts_root) unless $LOAD_PATH.include?(ts_root) # temporary!
+
+require 'hipe-code-molester/app'
+Hipe::CodeMolester::App.new.run(ARGV) if File.basename($PROGRAM_NAME) == File.basename(__FILE__)
