@@ -1,10 +1,11 @@
+require 'hipe-code-molester'
 require 'hipe-tinyscript/core'
 
 module Hipe::CodeMolester
   class MyCommand < Hipe::Tinyscript::Command
     def error type, str
       out colorize('error: ', :red) << str
-      return :type
+      return type
     end
   end
   class App < Hipe::Tinyscript::App

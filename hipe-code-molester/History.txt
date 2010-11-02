@@ -1,0 +1,5 @@
+=== 0.0.0 / 2010-11-01
+
+* Features:
+  * command: parse: ruby2ruby class that spits comments back out
+  * command: parse: just shows a sexp.
