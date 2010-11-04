@@ -4,12 +4,19 @@ require 'fileutils'
 
 CodeMolester = Hipe::CodeMolester
 
-class TestMolester < MiniTest::Unit::TestCase
-  @@curr = 0
-  @@verbose = nil
+module MolesterTester
+  @verbose = true
+  @dir_counter = 0
+  class << self
+    attr_accessor :dir_counter
+    attr_reader   :verbose
+  end
+  def dir_counter;    MolesterTester.dir_counter     end
+  def dir_counter= x; MolesterTester.dir_counter = x end
+  def verbose?;       MolesterTester.verbose         end
   def next_empty_tmpdir
-    dir = "#{Dir.tmpdir}/molest-#{@@curr += 1}"
-    File.directory?(dir) || FileUtils.mkdir(dir, :verbose => @@verbose)
+    dir = "#{Dir.tmpdir}/molest-#{self.dir_counter += 1}"
+    File.directory?(dir) || FileUtils.mkdir(dir, :verbose => verbose?)
     unless Dir["#{dir}/*"].empty?
       Dir["#{dir}/*"].each do |path|
         @verbose and $stdout.puts("rm -rf #{path}")
@@ -18,22 +25,33 @@ class TestMolester < MiniTest::Unit::TestCase
     end
     dir
   end
+end
+
+class TestFileMolestation < MiniTest::Unit::TestCase
+  include MolesterTester
   def setup
     @cm = CodeMolester.new
   end
-  def _test_fail_when_file_not_exist
+  def test_fail_when_file_not_exist
     dir = next_empty_tmpdir
     e = assert_raises Errno::ENOENT do
       @cm.file("#{dir}/not-exist")
     end
     assert_match(/No such file or directory/, e.message)
   end
-  def _test_create_file_when_not_exist
+  def test_create_file_when_not_exist
     dir = next_empty_tmpdir
     path = "#{dir}/make-this-file"
     refute File.exist?(path), 'path should not exist'
     @cm.file!(path)
     assert File.exist?(path), 'path should exist'
+  end
+end
+
+class TestModuleMolestation < MiniTest::Unit::TestCase
+  include MolesterTester
+  def setup
+    @cm = CodeMolester.new
   end
   def test_search_module_in_empty_block_find_none
     assert_equal nil, @cm.module('Foo')
@@ -99,13 +117,52 @@ class TestMolester < MiniTest::Unit::TestCase
     assert(@cm.object_id != found.first.object_id, "different objects here")
     assert(found.first.object_id != found.last.object_id, "different objects here")
   end
-  def _test_find_one_that_is_squashed_with_two
+  def test_not_find_one_compound
     @cm.ruby(<<-RUBY)
-      module Faz; end
       module Foo::Bar::Baz; end
-      module Fipple; end
     RUBY
-    found = @cm.module('Foo')
-    PP.pp found
+    assert_nil nil, @cm.module('Foo')
+  end
+  def test_find_one_deep_simple
+    @cm.ruby(<<-RUBY)
+      module Foo;
+        module Bar; end
+      end
+    RUBY
+    found = @cm.module('::Foo::Bar')
+    assert_kind_of CodeMolester, found
+    assert_equal 'Bar', found.module_name_local
+    assert @cm.object_id != found.object_id
+  end
+  def test_find_one_deep_with_others
+    @cm.ruby(<<-RUBY)
+      module Foo;
+        module Baz; end
+        module Bar; end
+      end
+    RUBY
+    found = @cm.module('::Foo::Bar')
+    assert_kind_of CodeMolester, found
+    assert_equal 'Bar', found.module_name_local
+  end
+  def test_two_levels_two_ways
+    @cm.ruby(<<-RUBY)
+      module Baz; end
+      module Foo;
+        module Bar;
+          module Daft::Punk; end
+        end
+        module Baz;
+        end
+      end
+    RUBY
+    one = @cm.module('::Foo::Bar::Daft::Punk')
+    two = @cm.module('Foo::Bar::Daft::Punk')
+    assert_kind_of CodeMolester, one
+    assert_kind_of CodeMolester, two
+    assert_equal one.object_id, two.object_id
+  end
+  def test_find_recursive
+
   end
 end

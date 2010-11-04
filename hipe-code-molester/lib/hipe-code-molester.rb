@@ -1,4 +1,4 @@
-# require 'filetuils'
+require 'fileutils'
 require 'ruby_parser'
 require 'ruby2ruby'
 require 'pp'
@@ -58,46 +58,88 @@ class Hipe::CodeMolester
     @sexp = sexp
     str
   end
-  def module str
-    is_toplevel, const, rest = parse_module_path str
-    @sexp.nil? and return nil
-    case @sexp.first
-    when :block
-      modules =  @sexp.select{ |node| Sexp === node && node.first == :module }
-      matches = modules.select{ |node| node[1] == const }
-      case matches.size
-      when 0 ; nil
-      when 1 ;
-        case modules.size
-        when 1 ; rest ? self.module(rest) : self
-        else   ;
-          next_node = self.class.cached(matches.first)
-          rest ? next_node.module(rest) : next_node
-        end
-      else
-        children = matches.map{ |node| self.class.cached(node) }
-        rest.nil? ? children : begin
-          things = children.map{ |child| child.module(rest) }.compact.flatten
-          things.empty? ? nil : things
-        end
-      end
-    when :module
-      if @sexp[1] != const
-        nil
-      else
-        rest.nil? ? self : nil
-      end
-    else nil
+  def module? *a
+    case a.size
+    when 0 ; return is_module?
+    when 1 ; # fallthrough!
+    else  raise ArgumentError.new("expecting 0 or 1 arg, not #{a.count}")
     end
   end
-private
+  def module str
+    @sexp.nil? and return nil
+    founds = _module(str)
+    case founds.size  # experimental return values!
+    when 0 ; nil
+    when 1 ; founds.first
+    else founds
+    end
+  end
+  # always returns an array
+  def _module str
+    is_toplevel, first, rest, full = parse_module_path(str)
+    founds = []
+    if module?
+      case module_name_local
+      when full  ; founds.push(self)
+      when first ; rest and  founds.concat(_module(rest))
+      end
+    end
+    founds.concat modules.map{ |m| m._module(str) }.flatten
+    founds
+  end
+# api private below
+  def colon2_to_str node
+    case node.first
+    when :const  ; node[1].to_s
+    when :colon2 ; "#{colon2_to_str(node[1])}::#{node[2]}"
+    else fail("nevar: #{node.first.inspect}") # keep this here. callers expect it
+    end
+  end
+  def is_module?
+    @sexp && @sexp.first == :module
+  end
+  def module_name_local
+    return nil unless @sexp && @sexp.first == :module
+    case @sexp[1]
+    when Symbol ; @sexp[1].to_s
+    else        ; colon2_to_str(@sexp[1])
+    end
+  end
+  def modules
+    case @sexp.first
+    when :module
+      case @sexp[2][0]
+      when :scope
+        if @sexp[2].size == 1
+          []  # emtpy scope
+        else
+          case @sexp[2][1][0]
+          when :block
+            modules_in_node(@sexp[2][1])
+          when :module
+            [self.class.cached(@sexp[2][1])]
+          else
+            fail("do me .. ")
+          end
+        end
+      else
+        fail("do me: ...")
+      end
+    when :block
+      modules_in_node(@sexp)
+    else
+      fail("do me: #{@sexp.first.inspect}")
+    end
+  end
+  def modules_in_node sexp
+    sexp.select{ |s| Sexp === s and s.first == :module }.map{ |s| self.class.cached(s) }
+  end
   def parse_module_path str
     md = /\A(::)?([a-z0-9_]+(?:::[a-z0-9_]+)*)\z/i.match(str) or fail("bad module path: #{str.inspect}")
     scn = StringScanner.new(md[2])
-    const = scn.scan(/[^:]+/).intern
-    scn.scan(/::/)
+    first = scn.scan(/[^:]+/)
     rest = ( '' == scn.rest ? nil : scn.rest )
-    [md[0], const, rest]
+    [md[1], first, rest, md[2]]
   end
   @@cache = {}
   class << self
