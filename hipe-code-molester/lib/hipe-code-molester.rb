@@ -74,6 +74,7 @@ class Hipe::CodeMolester
     else founds
     end
   end
+  # api private below
   # always returns an array
   def _module str
     is_toplevel, first, rest, full = parse_module_path(str)
@@ -81,13 +82,18 @@ class Hipe::CodeMolester
     if module?
       case module_name_local
       when full  ; founds.push(self)
-      when first ; rest and  founds.concat(_module(rest))
+      when first ; rest and founds.concat(_module(rest)) # leading dots always. should be.
       end
     end
-    founds.concat modules.map{ |m| m._module(str) }.flatten
+    if is_toplevel
+      modules.select{ |m| /\A#{Regexp.escape(m.module_name_local)}\b/ =~ full }.each do |m|
+        founds.concat( m.module_name_local == full ? [m] : m._module(str) )
+      end
+    else
+      founds.concat modules.map{ |m| m._module(str) }.flatten
+    end
     founds
   end
-# api private below
   def colon2_to_str node
     case node.first
     when :const  ; node[1].to_s
