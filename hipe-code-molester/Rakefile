@@ -1,0 +1,50 @@
+require 'rubygems'
+
+begin
+  require 'hipe-tinyscript/core'
+rescue LoadError
+  $LOAD_PATH.unshift File.expand_path('../..', __FILE__)
+  require 'hipe-tinyscript/core'
+end
+
+if false
+  require 'ruby-debug'
+  $stdout.puts(Hipe::Tinyscript::Colorize.colorize(
+    "ruby-debug loaded (don't commit)", :bright, :blink, :red
+  ))
+end
+
+class HipeRakeHelper
+  def test_files
+    Dir['./test/test-*']
+  end
+end
+
+WhoHah = HipeRakeHelper.new
+
+task :default => :test
+
+desc "run test"
+task :test do
+  $stdout.write("test files:")
+  WhoHah.test_files.each do |file|
+    $stdout.write(Hipe::Tinyscript::Colorize.colorize(" #{File.basename(file, '.rb')}", :yellow))
+    require file
+  end
+  $stdout.write("\n")
+end
+
+do_rcov = begin
+  require 'rcov/rcovtask'
+  true
+rescue LoadError
+  puts "Rcov is only supported on MRI 1.8. You can safely ignore this message on other platforms"
+  false
+end
+if do_rcov
+  Rcov::RcovTask.new do |t|
+    t.rcov_opts.push '-x gem'
+    t.test_files = WhoHah.test_files
+    t.verbose = true
+  end
+end
