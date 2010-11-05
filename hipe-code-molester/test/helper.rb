@@ -1,7 +1,4 @@
-# require 'ruby-debug'
-
-require File.dirname(File.dirname(__FILE__)) + '/config/environment'
-
+require File.expand_path('../../config/environment', __FILE__)
 require 'tempfile'
 require 'fileutils'
 require 'hipe-code-molester'
