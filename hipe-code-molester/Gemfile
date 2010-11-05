@@ -1,11 +1,11 @@
 source :rubygems
 
 group :core do
-  gem 'ruby_parser', '>~ 2.0.5'    # dev'd with this, earlier may work
-  gem 'sexp_processor', '>~ 3.0.5' # ditto above
-  gem 'ruby2ruby', '>~ 1.2.5' # ditto above
+  gem 'ruby_parser',       '>~ 2.0.5' # dev'd with this, earlier may work
+  gem 'sexp_processor',    '>~ 3.0.5' # ditto above
+  gem 'ruby2ruby',         '>~ 1.2.5' # ditto above
 end
 
 group :test do
-  gem 'minitest', '>~ 1.7.2' # earlier may work
+  gem 'minitest',           '>~ 1.7.2' # earlier may work
 end
