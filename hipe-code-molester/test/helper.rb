@@ -1,13 +1,9 @@
-require 'rubygems' # wayne sequine told me this is ok in application code not library code --
-                   # a) the point is moot in 1.9.2 b) this is for running it in 1.8.7
 # require 'ruby-debug'
+
+require File.dirname(File.dirname(__FILE__)) + '/config/environment'
 
 require 'tempfile'
 require 'fileutils'
-
-cm_core = File.expand_path('../../lib', __FILE__)
-$LOAD_PATH.unshift(cm_core) unless $LOAD_PATH.include?(cm_core)
-
 require 'hipe-code-molester'
 require 'minitest/unit'
 

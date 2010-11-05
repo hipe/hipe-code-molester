@@ -1,18 +1,4 @@
-require 'rubygems'
-
-begin
-  require 'hipe-tinyscript/core'
-rescue LoadError
-  $LOAD_PATH.unshift File.expand_path('../..', __FILE__)
-  require 'hipe-tinyscript/core'
-end
-
-if false
-  require 'ruby-debug'
-  $stdout.puts(Hipe::Tinyscript::Colorize.colorize(
-    "ruby-debug loaded (don't commit)", :bright, :blink, :red
-  ))
-end
+require File.dirname(__FILE__) + '/config/environment'
 
 class HipeRakeHelper
   def test_files
@@ -43,7 +29,7 @@ rescue LoadError
 end
 if do_rcov
   Rcov::RcovTask.new do |t|
-    t.rcov_opts.push '-x gem'
+    t.rcov_opts.push '-x gem -x hipe-tinyscript -x config/environment'
     t.test_files = WhoHah.test_files
     t.verbose = true
   end

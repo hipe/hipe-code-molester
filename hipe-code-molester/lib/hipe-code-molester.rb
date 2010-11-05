@@ -64,7 +64,7 @@ class Hipe::CodeMolester
   def module? *a
     case a.size
     when 0 ; return is_module?
-    when 1 ; # fallthrough!
+    # when 1 ; # fallthrough!
     else  raise ArgumentError.new("expecting 0 or 1 arg, not #{a.count}")
     end
   end
