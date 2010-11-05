@@ -33,7 +33,7 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal(nil, @cm.module('Foo'))
   end
   def test_find_two_right_among_two
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Foo; end
       module Foo; end
     RUBY
@@ -45,7 +45,7 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal founds[1].object_id, founds2[1].object_id
   end
   def test_find_one_among_several
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Alpha; end
       module Beta;  end
       module Gamma; end
@@ -55,7 +55,7 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert found.object_id != @cm.object_id, "should not return self for this"
   end
   def test_find_two_among_several
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Alpha; end
       module Beta;  end
       module Gamma; end
@@ -70,13 +70,13 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert(found.first.object_id != found.last.object_id, "different objects here")
   end
   def test_not_find_one_compound
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Foo::Bar::Baz; end
     RUBY
     assert_nil nil, @cm.module('Foo')
   end
   def test_find_one_deep_simple
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Foo;
         module Bar; end
       end
@@ -98,7 +98,7 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal 'Bar', found.module_name_local
   end
   def test_two_levels_two_ways
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Baz; end
       module Foo;
         module Bar;
@@ -115,7 +115,7 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal one.object_id, two.object_id
   end
   def test_find_recursive
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Baz; end
       module Foo
         module Bar
@@ -136,7 +136,7 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal 3, these.map(&:object_id).uniq.size
   end
   def test_find_recursive_shallow
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Baz; end
       module Foo
         module Bar
@@ -157,7 +157,7 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal 2, these.map(&:object_id).uniq.size
   end
   def test_read_class_and_defns
-    @cm.ruby(<<-RUBY)
+    @cm.ruby <<-RUBY
       module Hi
         module Mom
           module I::Love
@@ -171,5 +171,47 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     RUBY
     defns = @cm.module('::Hi::Mom::I::Love').klass('Cakes').defns
     assert_equal ['foo', 'bar'], defns.map(&:defn_name)
+  end
+  def test_get_defn_in_defn_node
+    assert_equal nil, @cm.defn('foo'), "defn returns nil on empty codenode"
+    @cm.ruby("def foo; 1+1 end")
+    assert_equal nil, @cm.defn('foob'), "defn for nonexistant meth returns nil"
+    get = @cm.defn('foo')
+    assert_equal @cm.object_id, get.object_id, "defn on defn node returns self"
+  end
+  def test_get_defn_in_module
+    @cm.ruby <<-RUBY
+      module Foob ; def bar; end end
+    RUBY
+    get1 = @cm.defn('bar')
+    get2 = @cm.module('Foob').defn('bar')
+    get3 = @cm.defn('barz')
+    assert_equal 'bar', get1.defn_name
+    assert_equal get2.defn_name, get1.defn_name
+    assert_equal get1.object_id, get2.object_id
+    assert_equal nil, get3
+  end
+  def test_get_defn_in_class
+    @cm.ruby <<-RUBY
+      module Bliff
+        class Blaff
+          def fiz; end
+        end
+      end
+    RUBY
+    got = @cm.module('Bliff').klass('Blaff').defn('fiz')
+    assert_kind_of CodeMolester, got
+    assert_equal 'fiz', got.defn_name
+  end
+  def test_create_tree_and_copy_paste_method_definition
+    @cm.ruby <<-RUBY
+      def kizzme
+        1 + 1
+      end
+    RUBY
+    @cm2 = CodeMolester.new
+    @cm2.module!('Foo').module!('Bar').klass!('Baz').defn!(
+      @cm.defn('kizzme').ruby
+    )
   end
 end
