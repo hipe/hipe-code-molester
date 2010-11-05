@@ -6,6 +6,8 @@ require 'strscan'
 
 module Hipe; end
 class Hipe::CodeMolester
+  VERSION = '0.0.0'
+
   class Ruby2RubyMolested < Ruby2Ruby
     def process_class sexp
       "#{sexp.comments}#{super}"
