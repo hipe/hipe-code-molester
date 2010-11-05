@@ -18,10 +18,7 @@ class Hipe::CodeMolester
     def process_defn sexp
       "#{sexp.comments}#{super}"
     end
-# @todo i'm twelve and
-#   def process_defs sexp
-#    "#{sexp.comments}#{super}"
-#   end
+    # @todo defn (see 4963f7)
   end
   # might create a 'state table' but why?
 end
@@ -121,8 +118,10 @@ class Hipe::CodeMolester
             modules_in_node(@sexp[2][1])
           when :module
             [self.class.cached(@sexp[2][1])]
+          when :defn
+            []
           else
-            fail("do me .. ")
+            fail("do me: #{@sexp[2][1][0].inspect}")
           end
         end
       else

@@ -115,6 +115,24 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal one.object_id, two.object_id
   end
   def test_find_recursive
-
+    @cm.ruby(<<-RUBY)
+      module Baz; end
+      module Foo
+        module Bar
+          module Baz; end
+        end
+      end
+      module Bar
+        module Baz
+        end
+      end
+      module Bar::Baz
+        def blah; end
+      end
+    RUBY
+    these = @cm.module('Bar::Baz')
+    assert_kind_of Array, these
+    assert_equal 3, these.size
+    assert_equal 3, these.map(&:object_id).uniq.size
   end
 end
