@@ -25,10 +25,10 @@ class TestFileMolestation < MiniTest::Unit::TestCase
     @cm.file(orig_file)
     unparsed_contents = @cm.ruby
     have = unparsed_contents.scan(/^ *# (\d+)\)/).map{ |x| x.first }
-    need = %w(1 2 3 4 5 6 8 9) # not seven or ten
+    need = %w(1 2 3 4 5 6 8 9 10) # not seven or eleven
     missing = need - have
     extra   = have - need
-    assert_equal 0, missing.size, "these comment lines should have been parsed "
+    assert_equal 0, missing.size, "these comment lines should have been parsed"
     assert_equal 0, extra.size, "these comments lines should not have been parsed"
   end
 end

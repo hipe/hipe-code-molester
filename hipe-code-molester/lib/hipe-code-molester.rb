@@ -18,9 +18,10 @@ class Hipe::CodeMolester
     def process_defn sexp
       "#{sexp.comments}#{super}"
     end
-    def process_defs sexp
-      "#{sexp.comments}#{super}"
-    end
+# @todo i'm twelve and
+#   def process_defs sexp
+#    "#{sexp.comments}#{super}"
+#   end
   end
   # might create a 'state table' but why?
 end
