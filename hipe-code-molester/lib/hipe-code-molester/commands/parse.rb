@@ -1,4 +1,4 @@
-module Hipe::CodeMolester
+class Hipe::CodeMolester
   class Parse < MyCommand
     description "try a parse i guess. this gains nothing over r2r_show except that i wrote it."
     parameter :file, "the file to parse", :positional => 1, :required => 1
