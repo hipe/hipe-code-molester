@@ -156,4 +156,20 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     assert_equal 2, these.size
     assert_equal 2, these.map(&:object_id).uniq.size
   end
+  def test_read_class_and_defns
+    @cm.ruby(<<-RUBY)
+      module Hi
+        module Mom
+          module I::Love
+            class Cakes
+              def foo; end
+              def bar; end
+            end
+          end
+        end
+      end
+    RUBY
+    defns = @cm.module('::Hi::Mom::I::Love').klass('Cakes').defns
+    assert_equal ['foo', 'bar'], defns.map(&:defn_name)
+  end
 end

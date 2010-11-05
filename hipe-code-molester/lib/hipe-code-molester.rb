@@ -58,6 +58,20 @@ class Hipe::CodeMolester
     @sexp = sexp
     str
   end
+  def defns
+    find_in_scope_or_block @sexp[3], :defn
+  end
+  def defn_name
+    @sexp[1].to_s
+  end
+  def klass const_str
+    founds = find_nodes(@sexp[2], :class)
+    case founds.size
+    when 0 ; nil
+    when 1 ; founds.first
+    # although it's possible we don't deal with multiple matches
+    end
+  end
   def module? *a
     case a.size
     when 0 ; return is_module?
@@ -140,7 +154,14 @@ class Hipe::CodeMolester
     end
   end
   def modules_in_node sexp
-    sexp.select{ |s| Sexp === s and s.first == :module }.map{ |s| self.class.cached(s) }
+     find_nodes sexp, :module
+  end
+  def find_nodes sexp, type
+    sexp.select{ |s| Sexp === s and s.first == type }.map{ |s| self.class.cached(s) }
+  end
+  def find_in_scope_or_block sexp, type
+    :block == sexp[1].first and sexp = sexp[1]
+    find_nodes sexp, type
   end
   def parse_module_path str
     md = /\A(::)?([a-z0-9_]+(?:::[a-z0-9_]+)*)\z/i.match(str) or fail("bad module path: #{str.inspect}")
