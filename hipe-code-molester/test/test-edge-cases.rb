@@ -10,11 +10,6 @@ class TestFileMolestation < MiniTest::Unit::TestCase
       @cm.ruby('one', 'two')
     end
   end
-  def test_error_with_module?
-    assert_raises(ArgumentError) do
-      @cm.module?('Foo')
-    end
-  end
   def test_colon2_to_str
     assert_raises(RuntimeError) do
       @cm.colon2_to_str(s(:class, :Foo))

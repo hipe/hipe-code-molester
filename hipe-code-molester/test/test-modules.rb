@@ -172,6 +172,21 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     defns = @cm.module('::Hi::Mom::I::Love').klass('Cakes').defns
     assert_equal ['foo', 'bar'], defns.map(&:defn_name)
   end
+  def test_set_defn_in_empty
+    d1 = @cm.defn!('def foo; 1 + 1 end')
+    d2 = @cm.defn('foo')
+    assert_kind_of CodeMolester, d1
+    assert_equal @cm.object_id, d1.object_id
+    assert_kind_of CodeMolester, d2
+    assert_equal d1.object_id, d2.object_id
+  end
+  def test_set_defn_in_strange
+    @cm.ruby('1 + 1')
+    e = assert_raises(RuntimeError) do
+      @cm.defn!('def foo; 2 + 2; end')
+    end
+    assert_match(/Can't add a defn to a :call/i, e.message)
+  end
   def test_get_defn_in_defn_node
     assert_equal nil, @cm.defn('foo'), "defn returns nil on empty codenode"
     @cm.ruby("def foo; 1+1 end")
@@ -202,6 +217,54 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     got = @cm.module('Bliff').klass('Blaff').defn('fiz')
     assert_kind_of CodeMolester, got
     assert_equal 'fiz', got.defn_name
+  end
+  def test_add_klass_in_empty
+    foo = @cm.klass!('Foo')
+    assert_kind_of CodeMolester, foo
+    assert_equal @cm.object_id, foo.object_id
+    assert_equal "class Foo\nend", foo.ruby
+  end
+  def test_add_klass_in_strange
+    @cm.ruby('def foo; end')
+    e = assert_raises(RuntimeError) do
+      @cm.klass!('Foo')
+    end
+    assert_match(/don't know how to add class to :defn/i, e.message)
+  end
+  def test_add_module_when_module_is_node
+    @cm.ruby("module Foo; end")
+    mod = @cm.module!('Foo')
+    assert_kind_of CodeMolester, mod
+    assert_equal @cm.object_id, mod.object_id
+  end
+  def test_add_module_when_module_is_already_on_first_level
+    @cm.ruby("module Foo; end; module Bar; end")
+    mod = @cm.module!('Bar')
+    assert_kind_of CodeMolester, mod
+    assert mod.object_id != @cm.object_id
+  end
+  def test_add_module_when_module_is_one_level_down_WOZ1
+    @cm.ruby("module Foo; module Bar; end; module Baz; end; end")
+    mod1 = @cm.module('Baz')
+    assert_kind_of CodeMolester, mod1
+    mod2 = @cm.module!('Baz')
+    assert_equal mod1.object_id, mod2.object_id
+  end
+  def test_add_module_when_module_is_two_levels_down_WOZ2
+    @cm.ruby("module Foo; module Bar; end; module Baz; module Biff; end; end; end")
+    mod1 = @cm.module('Biff')
+    assert_kind_of CodeMolester, mod1
+    mod2 = @cm.module!('Biff')
+    assert_kind_of CodeMolester, mod2
+    assert mod2.object_id != mod1.object_id
+  end
+  def test_add_module_to_inside_class
+    @cm.ruby('module Foo::Bar; class Baz; end end')
+    mod1 = @cm.module('::Foo::Bar').klass('Baz').module!('Biff')
+    assert_kind_of CodeMolester, mod1
+    mod2 = @cm.module('::Foo::Bar::Baz::Biff')
+    assert_kind_of CodeMolester, mod2
+    assert_equal 'Biff', mod2.module_name_local
   end
   def test_create_tree_and_copy_paste_method_definition
     @cm.ruby <<-RUBY

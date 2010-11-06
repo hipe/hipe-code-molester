@@ -2,7 +2,6 @@ require 'fileutils'
 require 'ruby_parser'
 require 'ruby2ruby'
 require 'pp'
-require 'strscan'
 
 module Hipe; end
 class Hipe::CodeMolester
@@ -54,7 +53,7 @@ class Hipe::CodeMolester
     Ruby2RubyMolested.new.process @sexp.deep_clone # sexp_processor
   end
   def ruby= str
-    sexp = RubyParser.new.parse(str) or fail("failed to parse ruby string: #{str.inspect}")
+    sexp = RubyParser.new.parse(str) or fail "failed to parse ruby string: #{str.inspect}"
     @sexp = sexp
     str
   end
@@ -73,11 +72,11 @@ class Hipe::CodeMolester
     elsif [:class, :module].include?(@sexp.first)
       defn = CodeMolester.new.ruby(ruby_str)
       self.class.cache! defn
-      defn(defn.defn_name) and fail("Won't overwrite existing defn: #{defn.defn_name}")
+      defn(defn.defn_name) and fail "Won't overwrite existing defn: #{defn.defn_name}"
       block!.push defn.sexp
       defn
     else
-      fail("Can't add a defn to a #{@sexp.first.inspect}")
+      fail "Can't add a defn to a #{@sexp.first.inspect}"
     end
   end
   def defns
@@ -88,16 +87,17 @@ class Hipe::CodeMolester
   end
   # parent class @todo
   def klass! const_str
-    /\A[_a-z0-9]+\z/i =~ const_str or fail("Let's keep this simple: #{const_str}")
+    /\A[_a-z0-9]+\z/i =~ const_str or fail "Let's keep this simple: #{const_str}"
     klass = self.klass(const_str) and return klass
     new_node = s(:class, const_str.intern, nil, s(:scope))
     if @sexp.nil?
       @sexp = new_node
-      self.class.cache!(self)
-    else case @sexp.first
-      when :module; block!.push(new_node); self.class.cached(new_node)
-      else fail("implement me. add class to #{@sexp.first.inspect}")
-      end
+      self.class.cache! self
+    elsif [:module, :class].include?(@sexp.first)
+      block!.push new_node
+      self.class.cached new_node
+    else
+      fail "don't know how to add class to #{@sexp.first.inspect}"
     end
   end
   def klass const_str
@@ -107,13 +107,6 @@ class Hipe::CodeMolester
     when 0 ; nil
     when 1 ; founds.first
     # although it's possible we don't deal with multiple matches
-    end
-  end
-  def module? *a
-    case a.size
-    when 0 ; return is_module?
-    # when 1 ; # fallthrough!
-    else  raise ArgumentError.new("expecting 0 arg for now, not #{a.count}")
     end
   end
   def module str
@@ -126,24 +119,18 @@ class Hipe::CodeMolester
     end
   end
   def module! str
-    /\A[_a-z0-9]+\z/i =~ str or fail("Let's keep this simple: #{str}")
+    /\A[_a-z0-9]+\z/i =~ str or fail "Let's keep this simple: #{str}"
     if @sexp.nil?
       @sexp = s(:module, str.intern, s(:scope))
       self.class.cache!(self)
       self
+    elsif (found = _module("::#{str}")).any?
+      found.last
+    elsif [:module, :class].include?(@sexp.first)
+      block!.push s(:module, str.intern, s(:scope))
+      self.module("::#{str}")
     else
-      case @sexp.first
-      when :module
-        found = _module("::#{str}")
-        if found.any?
-          found.last
-        else
-          block!.push s(:module, str.intern, s(:scope))
-          self.module("::#{str}")
-        end
-      else
-        fail("no.. #{sexp.first}")
-      end
+      fail "won't add a module to a #{sexp.first.inspect}"
     end
   end
   # api private below
@@ -152,7 +139,7 @@ class Hipe::CodeMolester
     when :scope
       case @sexp[scope_idx].length
       when 1; nublock = s(:block); @sexp[scope_idx].push(nublock); nublock
-      when 2; case @sexp[scope_idx][1][1]
+      when 2; case @sexp[scope_idx][1].first
         when :block; @sexp[scope_idx][1]
         end
       end
@@ -160,17 +147,19 @@ class Hipe::CodeMolester
   end
   # always returns an array
   def _module str
-    is_toplevel, first, rest, full = parse_module_path(str)
+    is_toplevel, clean = parse_module_path(str)
     founds = []
-    if module?
-      case module_name_local
-      when full  ; founds.push(self)
-      when first ; rest and founds.concat(_module(rest)) # leading dots always. should be.
+    if is_module?
+      if module_name_local == clean
+        founds.push(self)
+      elsif match = module_name_matcher.match(clean)
+        rest = match[1] or fail("should always be a partial match with a trailing remainder.")
+        founds.concat(_module(rest)) # this name should always have leading dots
       end
     end
     if is_toplevel
-      modules.select{ |m| /\A#{Regexp.escape(m.module_name_local)}\b/ =~ full }.each do |m|
-        founds.concat( m.module_name_local == full ? [m] : m._module(str) )
+      modules.select{ |m| m.module_name_matcher =~ clean }.each do |m|
+        founds.concat( m.module_name_local == clean ? [m] : m._module(str) )
       end
     else
       founds.concat modules.map{ |m| m._module(str) }.flatten
@@ -181,14 +170,17 @@ class Hipe::CodeMolester
     case node.first
     when :const  ; node[1].to_s
     when :colon2 ; "#{colon2_to_str(node[1])}::#{node[2]}"
-    else fail("nevar: #{node.first.inspect}") # keep this here. callers expect it
+    else fail "nevar: #{node.first.inspect}" # keep this here. callers expect it
     end
   end
   def is_module?
-    @sexp && @sexp.first == :module
+    @sexp && [:module, :class].include?(@sexp.first) # experimental munging of class into this
+  end
+  def module_name_matcher
+    /\A#{Regexp.escape(module_name_local)}\b(.+)?\Z/ # better to be safe and not cache this
   end
   def module_name_local
-    return nil unless @sexp && @sexp.first == :module
+    is_module? or return nil
     case @sexp[1]
     when Symbol ; @sexp[1].to_s
     else        ; colon2_to_str(@sexp[1])
@@ -196,30 +188,30 @@ class Hipe::CodeMolester
   end
   def modules
     case @sexp.first
-    when :module
-      case @sexp[2][0]
+    when :module, :class # quietly treat class as module -- experimental!
+      case @sexp[scope_idx].first
       when :scope
-        if @sexp[2].size == 1
+        if @sexp[scope_idx].size == 1
           []  # emtpy scope
         else
-          case @sexp[2][1][0]
+          case @sexp[scope_idx][1][0]
           when :block
-            modules_in_node(@sexp[2][1])
-          when :module
-            [self.class.cached(@sexp[2][1])]
-          when :defn, :class
+            modules_in_node(@sexp[scope_idx][1])
+          when :module, :class # include class as module -- experimental!
+            [self.class.cached(@sexp[scope_idx][1])]
+          when :defn
             []
           else
-            fail("do me: #{@sexp[2][1][0].inspect}")
+            fail "do me: #{@sexp[scope_idx][1][0].inspect}"
           end
         end
       else
-        fail("do me: ...")
+        fail "do me: ..."
       end
     when :block
       modules_in_node(@sexp)
     else
-      fail("do me: #{@sexp.first.inspect}")
+      fail "do me: #{@sexp.first.inspect}"
     end
   end
   def modules_in_node sexp
@@ -234,11 +226,8 @@ class Hipe::CodeMolester
     find_nodes sexp, type
   end
   def parse_module_path str
-    md = /\A(::)?([a-z0-9_]+(?:::[a-z0-9_]+)*)\z/i.match(str) or fail("bad module path: #{str.inspect}")
-    scn = StringScanner.new(md[2])
-    first = scn.scan(/[^:]+/)
-    rest = ( '' == scn.rest ? nil : scn.rest )
-    [md[1], first, rest, md[2]]
+    md = /\A(::)?([a-z0-9_]+(?:::[a-z0-9_]+)*)\z/i.match(str) or fail "bad module path: #{str.inspect}"
+    md.captures # 068a0e56 used to do more
   end
   def scope_idx
     case @sexp.first
@@ -250,7 +239,7 @@ class Hipe::CodeMolester
   class << self
     def cache! code_molester
       sexp = code_molester.sexp
-      @@cache.key?(sexp.object_id) and fail("already cached sexp: #{sexp.first.inspet}##{sexp.object_id}")
+      @@cache.key?(sexp.object_id) and fail "already cached sexp: #{sexp.first.inspet}##{sexp.object_id}"
       @@cache[sexp.object_id] = code_molester
     end
     def cached sexp
