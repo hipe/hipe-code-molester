@@ -67,6 +67,7 @@ class Hipe::CodeMolester
     end
   end
   def defn! ruby_str
+    ruby_str.kind_of?(CodeMolester) and ruby_str = ruby_str.ruby # experimental
     if @sexp.nil?
       ruby(ruby_str)
     elsif [:class, :module].include?(@sexp.first)
@@ -135,12 +136,13 @@ class Hipe::CodeMolester
   end
   # api private below
   def block!
-    case @sexp[scope_idx][0]
+    case @sexp[scope_idx].first
     when :scope
       case @sexp[scope_idx].length
       when 1; nublock = s(:block); @sexp[scope_idx].push(nublock); nublock
       when 2; case @sexp[scope_idx][1].first
         when :block; @sexp[scope_idx][1]
+        else nublock = s(:block, @sexp[scope_idx][1]); @sexp[scope_idx][1] = nublock;
         end
       end
     end
