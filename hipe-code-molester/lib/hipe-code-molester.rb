@@ -204,16 +204,16 @@ class Hipe::CodeMolester
           when :defn
             []
           else
-            fail "do me: #{@sexp[scope_idx][1][0].inspect}"
+            fail "can't have modules(?): #{@sexp[scope_idx][1][0].inspect}"
           end
         end
       else
-        fail "do me: ..."
+        fail "can't have modules(?): #{@sexp[scope_idx].first.inspect}"
       end
     when :block
       modules_in_node(@sexp)
     else
-      fail "do me: #{@sexp.first.inspect}"
+      fail "can't have modules(?): #{@sexp.first.inspect}"
     end
   end
   def modules_in_node sexp

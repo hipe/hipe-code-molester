@@ -20,20 +20,20 @@ class TestFileMolestation < MiniTest::Unit::TestCase
     e = assert_raises(RuntimeError) do
       @cm.modules
     end
-    assert_match(/do me/, e.message)
+    assert_match(/can't have modules/i, e.message)
   end
   def test_module_no_scope
     @cm.instance_variable_set('@sexp', s(:module, :Foo, s(:dope)))
     e = assert_raises(RuntimeError) do
       @cm.modules
     end
-    assert_match(/do me:/, e.message)
+    assert_match(/can't have modules/i, e.message)
   end
   def test_module_no_block
     @cm.instance_variable_set('@sexp', s(:dodule, :Foo))
     e = assert_raises(RuntimeError) do
       @cm.modules
     end
-    assert_match(/do me:/, e.message)
+    assert_match(/can't have modules/i, e.message)
   end
 end

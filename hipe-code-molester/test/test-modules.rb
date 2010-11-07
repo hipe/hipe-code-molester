@@ -231,6 +231,17 @@ class TestModuleMolestation < MiniTest::Unit::TestCase
     end
     assert_match(/don't know how to add class to :defn/i, e.message)
   end
+  def test_add_module_when_node_is_not_valid_to_add_modules_to_nohack
+    @cm.ruby("def foo; 1 + 1; end")
+    e = assert_raises(RuntimeError){ @cm.module!('Fiz') }
+    assert_match(/can't have module/i, e.message)
+  end
+  def test_add_module_when_node_is_not_valid_to_add_modules_to_with_hack
+    def @cm._module(*a); [] end
+    @cm.ruby("def foo; 1 + 1; end")
+    e = assert_raises(RuntimeError){ @cm.module!('Fiz') }
+    assert_match(/won't add a module to a :defn/i, e.message)
+  end
   def test_add_module_when_module_is_node
     @cm.ruby("module Foo; end")
     mod = @cm.module!('Foo')
